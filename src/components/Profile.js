@@ -21,10 +21,10 @@ const ProfileScreen = () => {
         source={require('../assets/profilepage.jpg')}
         style={styles.profileImage}
       />
-      <Text style={styles.username}>{userInfo.name}</Text>
+      <Text style={styles.username}>{userInfo?.name}</Text>
       <Text style={styles.bio}>Software Developer</Text>
       <View style={styles.detailsContainer}>
-        <Text style= {{color: '#000'}}>Email:{" "}{userInfo.email}</Text>
+        <Text style= {{color: '#000'}}>Email:{" "}{userInfo?.email}</Text>
         <Text style= {{color: '#000'}}>Company: ITS</Text>
         <Text style= {{color: '#000'}}>Location: Chennai</Text>
       </View>

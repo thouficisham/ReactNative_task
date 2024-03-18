@@ -1,4 +1,5 @@
 import {
+  ActivityIndicator,
   Button,
   FlatList,
   KeyboardAvoidingView,
@@ -10,139 +11,98 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import React, { useState, useEffect, useDebugValue } from 'react';
+import React, {useState, useEffect, useDebugValue} from 'react';
 import Fallback from './Fallback';
 import Icon from 'react-native-vector-icons/AntDesign';
-import { CheckBox } from 'react-native-elements';
+import {CheckBox} from 'react-native-elements';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useNavigation } from '@react-navigation/native';
 import axios from 'axios';
-import { MyAppApi } from '../api/myAppapi';
+import {MyAppApi} from '../api/myAppapi';
+import {useDispatch, useSelector} from 'react-redux';
+import {
+  addTaskStart,
+  checkTaskStart,
+  clearEditTask,
+  deleteTaskStart,
+  getTaskListStart,
+  setEditTask,
+  updateTaskStart,
+} from '../redux/TodoSlice';
 
 const Todo = () => {
   const [task, setTask] = useState('');
-  const [taskList, setTaskList] = useState([]);
-  const [editTask, setEditTask] = useState(null);
   const [validation, setValidation] = useState(false);
-  const [loginUserDetails, setLoginUserDetails] = useState({})
+  const [loginUserDetails, setLoginUserDetails] = useState({});
+  const dispatch = useDispatch();
+  const taskList = useSelector(state => state.todoApp.taskList);
+  const editTask = useSelector(state => state.todoApp.editTask);
+  const loading = useSelector(state => state.todoApp.loading);
 
   useEffect(() => {
     const fetchUserInfo = async () => {
       try {
         const userInfo = await AsyncStorage.getItem('userInfo');
         let userDetails = JSON.parse(userInfo);
-        setLoginUserDetails(userDetails)
-        getTaskList(userDetails.id);
+        setLoginUserDetails(userDetails);
+        dispatch(getTaskListStart(userDetails.id));
       } catch (error) {
         console.error('Error fetching user info:', error);
       }
     };
-    
+
     fetchUserInfo();
-  }, []);
+  }, [dispatch]);
 
-  const getTaskList = (id) => {
-    {
-      const url = MyAppApi.TodoList(id);
-      axios.get(url)
-          .then((res) => setTaskList(res.data))
-          .catch((err) => Alert.alert(err))
-          .finally(() => { })
-  }
-  }
-
-  const handleAddTodo = async () => {
+  const handleAddTodo = () => {
     if (task.trim() === '') {
       return setValidation(true);
     }
 
-const input = {
-  userid: loginUserDetails.id,
-  task: task,
-  complete: false
-};
+    const input = {
+      userid: loginUserDetails.id,
+      task: task,
+      complete: false,
+    };
+    dispatch(addTaskStart(input));
 
- await axios.post(MyAppApi.postTask, JSON.stringify(input))
-  .then((response) => {
-    setTaskList([
-      ...taskList,
-      response.data
-    ]);
-  })
-  .catch(error => {
-    console.error('Error adding new todo item:', error);
-  });
     setTask('');
     setValidation(false);
   };
 
-  const handleEditTask = (item) => {
-    setEditTask(item);
-    console.log(item, "edit");
+  const handleEditTask = item => {
+    dispatch(setEditTask(item));
     setTask(item.task);
   };
 
-  const handleUpdateTask =  () => {
-        let url = MyAppApi.putTask(editTask.id)
-        let input = {
-          id: editTask.id,
-          userid: editTask.userid,
-          task: task,
-          complete: editTask.complete
-        }
-        axios.put(url, input)
-        .then(response => {
-          const updatedTaskIndex = taskList.findIndex(task => task.id === response.data.id);
-          if (updatedTaskIndex !== -1) {
-            const updatedTaskList = [...taskList];
-            console.log(updatedTaskList);
-            updatedTaskList[updatedTaskIndex] = response.data;
-            setTaskList(updatedTaskList);
-          } else {
-            console.error('Task not found in taskList');
-          }
-        })
-        .catch(error => console.log(error));
-          
-    setEditTask(null);
+  const handleUpdateTask = () => {
+    let input = {
+      id: editTask.id,
+      userid: editTask.userid,
+      task: task,
+      complete: editTask.complete,
+    };
+    dispatch(updateTaskStart(input));
+
+    dispatch(clearEditTask(null));
     setTask('');
   };
 
   const handleDeleteTask = id => {
-       
-    // const updatedTaskList = taskList.filter(task => task.id !== id);
-    // setTaskList(updatedTaskList);
-    let url = MyAppApi.deleteTask(id)
-    axios.delete(url)
-    .then(res => {
-      const updateTaskList = taskList.filter((task) => task.id !== res.data.id)
-      console.log(updateTaskList, "res")
-      setTaskList(updateTaskList)})
-    .catch(err =>console.log(err))
+    dispatch(deleteTaskStart(id));
   };
 
-
-
   const handleCheck = task => {
-    const updatedTask = { ...task, complete: !task.complete };
-    let url = MyAppApi.putTask(task.id);
-    axios.put(url, updatedTask)
-      .then(res => {
-          console.log(res.data, "res");
-          const updateTaskList = taskList.map((item) => {
-            if(item.id === res.data.id) {
-              return updatedTask
-            }
-            return item;
-          })
-          console.log(updateTaskList);
-          setTaskList(updateTaskList)
-      })
-      .catch(err => console.log(err));
-};
+    const updatedTask = {...task, complete: !task.complete};
+    let input = {
+      id: updatedTask.id,
+      userid: updatedTask.userid,
+      task: updatedTask.task,
+      complete: updatedTask.complete,
+    };
+    dispatch(checkTaskStart(input));
+  };
 
-
-  const renderTask = ({ item, index }) => {
+  const renderTask = ({item, index}) => {
     return (
       <View
         style={{
@@ -154,7 +114,7 @@ const input = {
           flexDirection: 'row',
           alignItems: 'center',
           shadowColor: '#000',
-          shadowOffset: { width: 0, height: 5 },
+          shadowOffset: {width: 0, height: 5},
           shadowOpacity: 1,
           shadowRadius: 3,
         }}>
@@ -164,47 +124,61 @@ const input = {
             fontSize: 20,
             fontWeight: 800,
             flex: 1,
-            textDecorationLine: item.complete ? 'line-through' : 'none',
+            textDecorationLine: item?.complete ? 'line-through' : 'none',
           }}>
-          {item.task}
+          {item?.task}
         </Text>
         <CheckBox
-          checked={item.complete}
+          checked={item?.complete}
           onPress={() => handleCheck(item)}
           checkedColor="green"
           uncheckedColor="#fff"
         />
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', flex: 0.4 }}>
+        <View
+          style={{
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            flex: 0.4,
+          }}>
           <Icon
             name="edit"
             color={'#fff'}
             size={30}
             onPress={() => handleEditTask(item)}
-            disabled={item.complete === true}
+            disabled={item?.complete === true}
           />
           <Icon
             name="delete"
             color={'#fff'}
             size={30}
             onPress={() => handleDeleteTask(item.id)}
-            disabled={item.complete === true}
+            disabled={item?.complete === true}
           />
         </View>
       </View>
     );
   };
+
+  if (loading) {
+    return (
+      <View style={[styles.container, styles.horizontal]}>
+        <ActivityIndicator size="large" color="#0000ff" />
+      </View>
+    );
+  }
+
   return (
-    <KeyboardAvoidingView behavior={'padding'}
-      style={{ flex: 1 }}>
-      <SafeAreaView style={{ flex: 1 }}>
-        <View style={{ marginHorizontal: 16, marginVertical: 20 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+    <KeyboardAvoidingView
+      behavior={'padding'}
+      style={{flex: 1, overflow: 'scroll'}}>
+      <SafeAreaView style={{flex: 1, overflow: 'scroll'}}>
+        <View style={{marginHorizontal: 16, marginVertical: 20}}>
+          <View style={{flexDirection: 'row', alignItems: 'center'}}>
             <Text
               style={{
                 color: '#242424',
                 fontSize: 20,
                 fontWeight: 'bold',
-
               }}>
               Todo
             </Text>
@@ -224,7 +198,7 @@ const input = {
             value={task}
             onChangeText={userText => setTask(userText)}
           />
-          {validation && <Text style={{ color: 'red' }}>please fill task</Text>}
+          {validation && <Text style={{color: 'red'}}>please fill task</Text>}
           {editTask ? (
             <TouchableOpacity
               style={{
@@ -271,5 +245,16 @@ const input = {
     </KeyboardAvoidingView>
   );
 };
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  horizontal: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    padding: 10,
+  },
+});
 
 export default Todo;

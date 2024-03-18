@@ -50,9 +50,7 @@ const HeaderComponent = () => {
 
 const styles = StyleSheet.create({
     container: {
-        backgroundColor: '#82A3FF',
-        borderBottomLeftRadius: 20,
-        borderBottomRightRadius: 20
+        backgroundColor: '#82A3FF'
     },
     header: {
         height: 60,
@@ -61,6 +59,7 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         alignItems: 'center',   
         marginHorizontal: 10,
+        elevation: 10
     },
     headerText: {
         fontSize: 20,
